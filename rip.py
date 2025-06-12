@@ -6,6 +6,7 @@ import json
 from dotenv import load_dotenv
 import os
 from tqdm import tqdm
+from glob import glob
 
 load_dotenv()
 SF0_URL = "http://sf0.org/"
@@ -242,7 +243,7 @@ def get_all_praxis():
     save_location_extractor = re.compile(r"http://sf0.org/(.+)")
     praxis_list = json.load(open("extracted_data/praxis_list.json"))
     for praxis in tqdm(praxis_list):
-        praxis_url = praxis["praxis_url"]
+        praxis_url = praxis["praxis_url"] + "?big=1"
         save_location = save_location_extractor.search(praxis_url).group(1)
         r = requests.get(praxis_url)
         soup = BeautifulSoup(r.text)
@@ -265,3 +266,23 @@ def get_all_terms():
         with open(f"extracted_data/{save_location}/index.html", "w") as file:
             file.write(str(term_content))
         sleep(RATE_LIMIT)
+
+
+def get_links_and_images():
+    links = set()
+    images = set()
+    videos = set()
+    for html_path in tqdm(glob("extracted_data/**/*.html", recursive=True)):
+        soup = BeautifulSoup(open(html_path))
+        for element in soup(href=True):
+            links.add(element["href"])
+        for element in soup(src=True):
+            images.add(element["src"])
+        for element in soup(data=True):
+            videos.add(element["data"])
+    with open("extracted_data/extracted_links.json", "w") as file:
+        json.dump(sorted(links), file)
+    with open("extracted_data/extracted_images.json", "w") as file:
+        json.dump(sorted(images), file)
+    with open("extracted_data/extracted_videos.json", "w") as file:
+        json.dump(sorted(videos), file)
